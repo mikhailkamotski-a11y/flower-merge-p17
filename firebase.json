@@ -1,0 +1,13 @@
+{
+  "hosting": {
+    "site": "flower-merge-p17",
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      ".firebase",
+      ".git",
+      ".claude",
+      "**/node_modules/**"
+    ]
+  }
+}

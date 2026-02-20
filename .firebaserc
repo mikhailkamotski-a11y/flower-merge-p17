@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "hex-puzzle-game-rnd-c0b35"
+  },
+  "targets": {
+    "hex-puzzle-game-rnd-c0b35": {
+      "hosting": {
+        "flower-merge-p17": [
+          "flower-merge-p17"
+        ]
+      }
+    }
+  }
+}
