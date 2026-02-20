@@ -1,0 +1,2538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Flower Merge</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: linear-gradient(135deg, #1a2e0a 0%, #163e2b 50%, #0f603e 100%);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    overflow: hidden;
+    height: 100dvh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  #game-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(420px, 100vw - 20px);
+    padding: 10px 0;
+    color: #fff;
+    z-index: 10;
+  }
+
+  #game-header h1 {
+    font-size: 22px;
+    background: linear-gradient(90deg, #ff9ff3, #feca57, #ff6b6b, #48dbfb, #1dd1a1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .score-box {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 4px 14px;
+    text-align: center;
+  }
+
+  .score-box .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+  }
+
+  .score-box .value {
+    font-size: 20px;
+    font-weight: 700;
+  }
+
+  #next-fruit-preview {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  #next-fruit-preview .label {
+    position: absolute;
+    top: -14px;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.6;
+    color: #fff;
+  }
+
+  #game-wrapper {
+    position: relative;
+    width: min(420px, 100vw - 20px);
+    flex: 1;
+    max-height: calc(100dvh - 110px);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 16px;
+  }
+
+  #game-over-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    border-radius: 16px;
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    backdrop-filter: blur(8px);
+  }
+
+  #game-over-overlay.visible {
+    display: flex;
+  }
+
+  #game-over-overlay h2 {
+    font-size: 36px;
+    margin-bottom: 10px;
+    color: #ff6090;
+  }
+
+  #game-over-overlay .final-score {
+    font-size: 48px;
+    font-weight: 800;
+    margin: 10px 0;
+  }
+
+  #game-over-overlay button {
+    margin-top: 24px;
+    padding: 14px 40px;
+    font-size: 18px;
+    font-weight: 700;
+    border: none;
+    border-radius: 30px;
+    background: linear-gradient(135deg, #e91e63, #ff6090);
+    color: #fff;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+
+  #game-over-overlay button:hover {
+    transform: scale(1.05);
+  }
+
+  #game-over-overlay button:active {
+    transform: scale(0.97);
+  }
+
+  .evolution-chart {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-top: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 320px;
+  }
+
+  .evolution-chart .arrow {
+    color: rgba(255,255,255,0.3);
+    font-size: 12px;
+  }
+
+  /* Evolution bar at top */
+  #evolution-bar {
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    width: min(420px, 100vw - 20px);
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.3);
+    border-radius: 10px;
+    justify-content: center;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  #evolution-bar .evo-item {
+    font-size: 16px;
+    opacity: 0.3;
+    transition: opacity 0.3s, transform 0.3s;
+    flex-shrink: 0;
+  }
+  #evolution-bar .evo-item.unlocked {
+    opacity: 1;
+  }
+  #evolution-bar .evo-item.just-unlocked {
+    animation: evoPop 0.5s ease-out;
+  }
+  #evolution-bar .evo-arrow {
+    color: rgba(255,255,255,0.2);
+    font-size: 9px;
+    flex-shrink: 0;
+  }
+  @keyframes evoPop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.6); }
+    100% { transform: scale(1); }
+  }
+
+  /* Coins display */
+  .coins-box {
+    background: rgba(255,200,0,0.15);
+    border: 1px solid rgba(255,200,0,0.3);
+    border-radius: 12px;
+    padding: 4px 10px;
+    text-align: center;
+    min-width: 60px;
+  }
+  .coins-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.7; }
+  .coins-box .value { font-size: 18px; font-weight: 700; color: #ffd700; }
+
+  /* Info button */
+  #info-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  #info-btn:hover { background: rgba(255,255,255,0.2); }
+
+  /* Generic overlay */
+  .game-overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    border-radius: 16px;
+    z-index: 200;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    color: #fff;
+    backdrop-filter: blur(8px);
+    overflow-y: auto;
+    padding: 20px 16px;
+  }
+  .game-overlay.visible { display: flex; }
+
+  /* Info panel */
+  #info-overlay h3 { font-size: 18px; margin: 10px 0 6px; color: #feca57; }
+  #info-overlay .info-grid {
+    display: grid;
+    grid-template-columns: 36px 1fr 60px 60px;
+    gap: 4px 8px;
+    align-items: center;
+    font-size: 12px;
+    width: 100%;
+    max-width: 360px;
+  }
+  #info-overlay .info-grid .ig-emoji { font-size: 20px; text-align: center; }
+  #info-overlay .info-grid .ig-name { font-weight: 600; }
+  #info-overlay .info-grid .ig-stat { text-align: center; opacity: 0.8; font-size: 11px; }
+  #info-overlay .info-grid-header {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.5;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .zombie-info-grid {
+    display: grid;
+    grid-template-columns: 36px 1fr 1fr;
+    gap: 4px 8px;
+    align-items: center;
+    font-size: 12px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .zombie-info-grid .ig-emoji { font-size: 20px; text-align: center; }
+
+  #info-overlay .close-btn {
+    margin-top: 16px;
+    padding: 10px 30px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    cursor: pointer;
+  }
+  #info-overlay .close-btn:hover { background: rgba(255,255,255,0.25); }
+
+  /* Repair popup */
+  #repair-overlay {
+    justify-content: center;
+  }
+  #repair-overlay .repair-box {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    max-width: 300px;
+  }
+  #repair-overlay .repair-box h3 { font-size: 22px; margin-bottom: 8px; color: #feca57; }
+  #repair-overlay .repair-box p { font-size: 14px; opacity: 0.8; margin: 8px 0; }
+  #repair-overlay .repair-box .cost { font-size: 20px; color: #ffd700; font-weight: 700; }
+  #repair-overlay button {
+    padding: 10px 24px;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    margin: 6px;
+  }
+  .btn-repair {
+    background: linear-gradient(135deg, #ffd700, #ffaa00);
+    color: #333;
+  }
+  .btn-repair:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-skip {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+
+  /* Milestone popup */
+  #milestone-overlay {
+    justify-content: center;
+  }
+  #milestone-overlay .milestone-box {
+    background: linear-gradient(145deg, rgba(40,20,60,0.95), rgba(20,40,30,0.95));
+    border: 2px solid rgba(255,200,100,0.4);
+    border-radius: 20px;
+    padding: 20px;
+    text-align: center;
+    max-width: 320px;
+    box-shadow: 0 0 40px rgba(255,200,0,0.15);
+  }
+  #milestone-overlay .milestone-box h3 {
+    font-size: 20px;
+    color: #feca57;
+    margin-bottom: 6px;
+  }
+  #milestone-overlay .milestone-box .new-flower {
+    font-size: 48px;
+    margin: 8px 0;
+  }
+  #milestone-overlay .milestone-box .flower-name {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #fff;
+  }
+  #milestone-overlay canvas {
+    border-radius: 12px;
+    margin: 8px 0;
+    width: 100%;
+    max-width: 280px;
+  }
+  #milestone-overlay .btn-ok {
+    margin-top: 12px;
+    padding: 10px 40px;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #ffd700, #ff9800);
+    color: #333;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<!-- Evolution bar -->
+<div id="evolution-bar"></div>
+
+<div id="game-header">
+  <div id="next-fruit-preview">
+    <span class="label">Next</span>
+    <canvas id="preview-canvas" width="40" height="40"></canvas>
+  </div>
+  <div style="text-align:center">
+    <h1>Flower Merge</h1>
+    <div id="level-display" style="font-size:11px;color:rgba(255,255,255,0.7);margin-top:-2px;">Level 1 — Wave 1</div>
+  </div>
+  <div style="display:flex;gap:6px;align-items:center">
+    <div class="coins-box">
+      <div class="label">🪙</div>
+      <div class="value" id="coins-display">0</div>
+    </div>
+    <div class="score-box">
+      <div class="label">Score</div>
+      <div class="value" id="score-display">0</div>
+    </div>
+    <button id="info-btn" title="Info">ℹ</button>
+  </div>
+</div>
+
+<div id="game-wrapper">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Game over overlay -->
+  <div id="game-over-overlay">
+    <h2>Game Over</h2>
+    <div style="font-size:16px;opacity:0.8;margin-bottom:4px" id="final-level">Level 1</div>
+    <div class="final-score" id="final-score">0</div>
+    <div class="evolution-chart" id="evolution-chart"></div>
+    <button id="restart-btn">Play Again</button>
+  </div>
+
+  <!-- Info overlay -->
+  <div id="info-overlay" class="game-overlay">
+    <h3>🌸 Flowers</h3>
+    <div class="info-grid" id="flower-info-grid"></div>
+    <h3>🧟 Zombies</h3>
+    <div class="zombie-info-grid" id="zombie-info-grid"></div>
+    <button class="close-btn" id="info-close-btn">Close</button>
+  </div>
+
+  <!-- Repair popup (shown between levels) -->
+  <div id="repair-overlay" class="game-overlay">
+    <div class="repair-box">
+      <h3>⚒️ Level Complete!</h3>
+      <p>Repair the fence?</p>
+      <p>Fence HP: <span id="repair-fence-hp">75</span>%</p>
+      <p class="cost">🪙 200</p>
+      <div>
+        <button class="btn-repair" id="repair-yes-btn">Repair (+50 HP)</button>
+        <button class="btn-skip" id="repair-skip-btn">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Milestone popup -->
+  <div id="milestone-overlay" class="game-overlay">
+    <div class="milestone-box">
+      <h3>🎉 New Flower Unlocked!</h3>
+      <div class="new-flower" id="milestone-emoji"></div>
+      <div class="flower-name" id="milestone-name"></div>
+      <canvas id="milestone-canvas" width="280" height="200"></canvas>
+      <div>
+        <button class="btn-ok" id="milestone-ok-btn">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// FLOWER MERGE GAME
+// ============================================================
+
+const FRUITS = [
+  { name: 'Seedling',       radius: 14, color: '#7cb342', stroke: '#558b2f', emoji: '🌱', points: 1 },
+  { name: 'Herb',           radius: 18, color: '#66bb6a', stroke: '#43a047', emoji: '🌿', points: 3 },
+  { name: 'Clover',         radius: 23, color: '#26a69a', stroke: '#00897b', emoji: '☘️', points: 6 },
+  { name: 'Tulip',          radius: 28, color: '#ef5350', stroke: '#c62828', emoji: '🌷', points: 10 },
+  { name: 'Cherry Blossom', radius: 33, color: '#f48fb1', stroke: '#e91e90', emoji: '🌸', points: 15 },
+  { name: 'Rose',           radius: 39, color: '#e53935', stroke: '#b71c1c', emoji: '🌹', points: 21 },
+  { name: 'Hibiscus',       radius: 46, color: '#d81b60', stroke: '#ad1457', emoji: '🌺', points: 28 },
+  { name: 'Sunflower',      radius: 53, color: '#fdd835', stroke: '#f9a825', emoji: '🌻', points: 36 },
+  { name: 'Bouquet',        radius: 61, color: '#ab47bc', stroke: '#8e24aa', emoji: '💐', points: 45 },
+  { name: 'Tree',           radius: 70, color: '#2e7d32', stroke: '#1b5e20', emoji: '🌳', points: 55 },
+  { name: 'Lotus',          radius: 80, color: '#ff8a80', stroke: '#ff5252', emoji: '🪷', points: 66 },
+];
+
+const DROP_TYPES = 5;
+const FENCE_W = 14;
+const GRAVITY = 0.4;
+const DAMPING = 0.7;
+const FRICTION = 0.3;
+const WALL_DAMPING = 0.5;
+const DANGER_LINE_Y = 80;
+const DANGER_GRACE_FRAMES = 120;
+
+// Zombie constants
+const ZOMBIE_SPEED = 0.35;
+const ZOMBIE_ATTACK_DMG = 0.15;
+const ZOMBIE_EAT_DMG = 0.3;
+const ZOMBIE_SIZE = 22;
+const ZOMBIE_HP_BASE = 30;
+const ZOMBIE_SPAWN_ZONE = 50; // height of dirt zone below fence
+
+// ============================================================
+// LEVEL & WAVE CONFIGURATION
+// ============================================================
+const PREDEFINED_LEVELS = [
+  // Level 1: Tutorial — gentle intro
+  { level: 1, waves: [
+    { count: 3, hp: 20, interval: 50, delay: 360 },
+    { count: 4, hp: 25, interval: 40, delay: 240 },
+    { count: 5, hp: 25, interval: 35, delay: 200 },
+  ]},
+  // Level 2: Warming up
+  { level: 2, waves: [
+    { count: 5, hp: 30, interval: 35, delay: 300 },
+    { count: 7, hp: 35, interval: 30, delay: 200 },
+    { count: 6, hp: 35, interval: 28, delay: 200 },
+  ]},
+  // Level 3: First spike!
+  { level: 3, waves: [
+    { count: 8, hp: 40, interval: 25, delay: 300 },
+    { count: 6, hp: 45, interval: 22, delay: 180, fast: true },
+    { count: 10, hp: 45, interval: 20, delay: 180 },
+    { count: 5, hp: 55, interval: 15, delay: 150, fast: true },
+  ]},
+  // Level 4: Freezers appear
+  { level: 4, waves: [
+    { count: 7, hp: 40, interval: 28, delay: 300 },
+    { count: 8, hp: 45, interval: 25, delay: 200, freezer: true },
+    { count: 6, hp: 50, interval: 22, delay: 200 },
+  ]},
+  // Level 5: Tanks + bombers
+  { level: 5, waves: [
+    { count: 8, hp: 45, interval: 24, delay: 300 },
+    { count: 6, hp: 50, interval: 22, delay: 200, bomber: true },
+    { count: 10, hp: 50, interval: 20, delay: 180 },
+    { count: 4, hp: 60, interval: 18, delay: 150, tank: true },
+  ]},
+  // Level 6: Hard spike — boss + freezers!
+  { level: 6, waves: [
+    { count: 10, hp: 55, interval: 20, delay: 300, freezer: true },
+    { count: 8, hp: 55, interval: 18, delay: 180, fast: true },
+    { count: 12, hp: 60, interval: 16, delay: 180, bomber: true },
+    { count: 6, hp: 65, interval: 14, delay: 150, tank: true },
+    { count: 3, hp: 70, interval: 20, delay: 120, boss: true },
+  ]},
+  // Level 7: Recovery but with tricks
+  { level: 7, waves: [
+    { count: 8, hp: 55, interval: 22, delay: 300 },
+    { count: 10, hp: 60, interval: 20, delay: 200, freezer: true },
+    { count: 8, hp: 60, interval: 18, delay: 200, bomber: true },
+  ]},
+  // Level 8: Mixed assault — all types
+  { level: 8, waves: [
+    { count: 10, hp: 60, interval: 20, delay: 300, freezer: true },
+    { count: 6, hp: 55, interval: 14, delay: 180, fast: true, bomber: true },
+    { count: 8, hp: 70, interval: 18, delay: 180, tank: true },
+    { count: 12, hp: 65, interval: 16, delay: 150, freezer: true },
+  ]},
+  // Level 9: Hard spike — boss + everything
+  { level: 9, waves: [
+    { count: 12, hp: 65, interval: 18, delay: 300, freezer: true },
+    { count: 8, hp: 60, interval: 12, delay: 180, fast: true, bomber: true },
+    { count: 10, hp: 75, interval: 16, delay: 180, tank: true },
+    { count: 14, hp: 70, interval: 14, delay: 150, freezer: true, bomber: true },
+    { count: 4, hp: 80, interval: 18, delay: 120, boss: true },
+  ]},
+  // Level 10: Endurance
+  { level: 10, waves: [
+    { count: 12, hp: 70, interval: 18, delay: 300, freezer: true },
+    { count: 10, hp: 65, interval: 14, delay: 200, fast: true, bomber: true },
+    { count: 8, hp: 80, interval: 16, delay: 200, tank: true },
+    { count: 14, hp: 75, interval: 14, delay: 180, freezer: true, bomber: true },
+  ]},
+];
+
+function generateLevel(n) {
+  const waveCount = Math.min(6, 3 + Math.floor(n / 3));
+  const baseHp = 30 + n * 7;
+  const isHard = n % 3 === 0;
+  const waves = [];
+  for (let i = 0; i < waveCount; i++) {
+    waves.push({
+      count: Math.min(20, 5 + n + (isHard ? 3 : 0) + i * 2),
+      hp: baseHp + i * 5 + (isHard ? 15 : 0),
+      interval: Math.max(8, 28 - n * 1.2 - i),
+      delay: i === 0 ? 300 : 180,
+      fast: isHard && i % 2 === 1,
+      tank: n > 5 && i === waveCount - 1,
+      boss: isHard && i === waveCount - 1 && n >= 6,
+      freezer: i % 2 === 0,
+      bomber: n > 6 && i % 3 === 1,
+    });
+  }
+  return { level: n, waves };
+}
+
+function getLevelConfig(n) {
+  if (n <= PREDEFINED_LEVELS.length) return PREDEFINED_LEVELS[n - 1];
+  return generateLevel(n);
+}
+
+// Projectile constants
+const SHOOT_INTERVAL = 90; // frames between shots per flower (was 60)
+const PROJECTILE_SPEED = 3.5;
+const PROJECTILE_BASE_DMG = 1.5; // multiplied by flower type index + 1 (was 3)
+
+// Freeze constants
+const FREEZE_DURATION = 180; // frames a flower stays frozen (3 sec)
+
+// Zombie projectile constants
+const ZOMBIE_PROJ_SPEED = 2.5;
+const ZOMBIE_SHOOT_INTERVAL = 200; // frames between freezer shots
+
+// ============================================================
+// GAME STATE
+// ============================================================
+let canvas, ctx, previewCanvas, previewCtx;
+let W, H;
+let fruits = [];
+let score = 0;
+let bestScore = parseInt(localStorage.getItem('flowerMergeBest') || '0');
+let currentFruitType = 0;
+let nextFruitType = 0;
+let dropX = 0;
+let canDrop = true;
+let dropCooldown = 0;
+let gameOver = false;
+let dangerTimer = 0;
+let pointerX = null;
+let particles = [];
+let mergeFlashes = [];
+let frameCount = 0;
+let scaleFactor = 1;
+let contactPairs = new Set();
+
+// Zombie state
+let zombies = [];
+let fenceHP = { bottom: 100 };
+let projectiles = [];
+let graves = [];
+let shootTimers = new Map(); // fruit id -> cooldown
+
+// Zombie projectiles (ice shots from freezer zombies)
+let zombieProjectiles = [];
+
+// Wave system state
+let currentLevel = 1;
+let currentWaveIndex = 0;
+let waveZombiesSpawned = 0;
+let waveSpawnTimer = 0;
+let waveState = 'waiting'; // 'waiting' | 'spawning' | 'clearing' | 'level_complete'
+let waveDelay = 0;
+let bannerText = '';
+let bannerAlpha = 0;
+let bannerTimer = 0;
+let levelConfig = null;
+
+// Coins & unlocks
+let coins = 0;
+let unlockedFlowers = new Set([0, 1, 2, 3]); // first 4 always unlocked (droppable)
+let milestoneQueue = []; // queue of flower types to show milestone popup for
+let gamePaused = false; // pause game during popups
+let repairPending = false; // show repair popup between levels
+
+// Fence inner boundaries (recalculated on resize)
+let wallL, wallR, floorY;
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+function init() {
+  canvas = document.getElementById('game-canvas');
+  ctx = canvas.getContext('2d');
+  previewCanvas = document.getElementById('preview-canvas');
+  previewCtx = previewCanvas.getContext('2d');
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointerleave', () => pointerX = null);
+
+  document.getElementById('restart-btn').addEventListener('click', restart);
+  document.getElementById('info-btn').addEventListener('click', toggleInfoPanel);
+  document.getElementById('info-close-btn').addEventListener('click', toggleInfoPanel);
+  document.getElementById('repair-yes-btn').addEventListener('click', doRepair);
+  document.getElementById('repair-skip-btn').addEventListener('click', closeRepairPopup);
+  document.getElementById('milestone-ok-btn').addEventListener('click', closeMilestone);
+
+  pickNextFruits();
+  buildEvolutionChart();
+  buildEvolutionBar();
+  startLevel(1);
+  requestAnimationFrame(gameLoop);
+}
+
+function resize() {
+  const wrapper = document.getElementById('game-wrapper');
+  const rect = wrapper.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  W = rect.width;
+  H = rect.height;
+
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  scaleFactor = W / 420;
+  dropX = W / 2;
+
+  wallL = FENCE_W + 4;
+  wallR = W - FENCE_W - 4;
+  floorY = H - ZOMBIE_SPAWN_ZONE - FENCE_W - 4;
+}
+
+function pickNextFruits() {
+  currentFruitType = nextFruitType;
+  nextFruitType = Math.floor(Math.random() * DROP_TYPES);
+  drawPreview();
+}
+
+function drawPreview() {
+  previewCtx.clearRect(0, 0, 40, 40);
+  const f = FRUITS[nextFruitType];
+  const s = Math.min(16, f.radius * scaleFactor * 0.7);
+  drawFruitShape(previewCtx, 20, 22, s, f);
+}
+
+function restart() {
+  fruits = [];
+  particles = [];
+  mergeFlashes = [];
+  zombies = [];
+  projectiles = [];
+  zombieProjectiles = [];
+  graves = [];
+  shootTimers.clear();
+  fenceHP = { bottom: 100 };
+  score = 0;
+  dangerTimer = 0;
+  gameOver = false;
+  canDrop = true;
+  dropCooldown = 0;
+  frameCount = 0;
+  bannerText = '';
+  bannerAlpha = 0;
+  bannerTimer = 0;
+  coins = 0;
+  unlockedFlowers = new Set([0, 1, 2, 3]);
+  milestoneQueue = [];
+  gamePaused = false;
+  repairPending = false;
+  document.getElementById('game-over-overlay').classList.remove('visible');
+  document.getElementById('info-overlay').classList.remove('visible');
+  document.getElementById('repair-overlay').classList.remove('visible');
+  document.getElementById('milestone-overlay').classList.remove('visible');
+  document.getElementById('score-display').textContent = '0';
+  document.getElementById('coins-display').textContent = '0';
+  buildEvolutionBar();
+  pickNextFruits();
+  startLevel(1);
+}
+
+function buildEvolutionChart() {
+  const el = document.getElementById('evolution-chart');
+  el.innerHTML = '';
+  FRUITS.forEach((f, i) => {
+    if (i > 0) {
+      const arrow = document.createElement('span');
+      arrow.className = 'arrow';
+      arrow.textContent = '→';
+      el.appendChild(arrow);
+    }
+    const span = document.createElement('span');
+    span.style.fontSize = '18px';
+    span.textContent = f.emoji;
+    span.title = f.name;
+    el.appendChild(span);
+  });
+}
+
+// ============================================================
+// INPUT HANDLING
+// ============================================================
+function getCanvasX(e) {
+  const rect = canvas.getBoundingClientRect();
+  return e.clientX - rect.left;
+}
+
+function onPointerMove(e) {
+  e.preventDefault();
+  const x = getCanvasX(e);
+  const r = FRUITS[currentFruitType].radius * scaleFactor;
+  pointerX = Math.max(wallL + r, Math.min(wallR - r, x));
+  dropX = pointerX;
+}
+
+function onPointerDown(e) {
+  e.preventDefault();
+  const x = getCanvasX(e);
+  const r = FRUITS[currentFruitType].radius * scaleFactor;
+  pointerX = Math.max(wallL + r, Math.min(wallR - r, x));
+  dropX = pointerX;
+}
+
+function onPointerUp(e) {
+  e.preventDefault();
+  if (canDrop && !gameOver && !gamePaused) {
+    dropFruit();
+  }
+}
+
+// ============================================================
+// FRUIT CREATION & DROPPING
+// ============================================================
+function dropFruit() {
+  if (!canDrop || gameOver) return;
+  canDrop = false;
+  dropCooldown = 25;
+
+  const type = currentFruitType;
+  const r = FRUITS[type].radius * scaleFactor;
+  const maxHp = FRUITS[type].radius * 2;
+  fruits.push({
+    x: dropX,
+    y: DANGER_LINE_Y - 10,
+    vx: 0,
+    vy: 0,
+    type: type,
+    radius: r,
+    justDropped: 15,
+    id: Math.random(),
+    hp: maxHp,
+    maxHp: maxHp,
+  });
+
+  pickNextFruits();
+}
+
+function createMergedFruit(x, y, newType) {
+  const r = FRUITS[newType].radius * scaleFactor;
+  const maxHp = FRUITS[newType].radius * 2;
+  return {
+    x, y,
+    vx: 0,
+    vy: -2,
+    type: newType,
+    radius: r,
+    justDropped: 0,
+    mergeScale: 1.4,
+    id: Math.random(),
+    hp: maxHp,
+    maxHp: maxHp,
+  };
+}
+
+// ============================================================
+// PHYSICS
+// ============================================================
+function updatePhysics() {
+  const dt = 1;
+  const iterations = 8;
+
+  for (const f of fruits) {
+    if (f.justDropped > 0) f.justDropped--;
+    f.vy += GRAVITY * dt;
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+
+    if (f.mergeScale && f.mergeScale > 1) {
+      f.mergeScale -= 0.03;
+      if (f.mergeScale < 1) f.mergeScale = 1;
+    }
+  }
+
+  contactPairs.clear();
+
+  for (let iter = 0; iter < iterations; iter++) {
+    for (const f of fruits) {
+      const r = f.radius;
+
+      // Floor — always solid
+      if (f.y + r > floorY) {
+        f.y = floorY - r;
+        f.vy *= -DAMPING;
+        f.vx *= (1 - FRICTION);
+        if (Math.abs(f.vy) < 0.5) f.vy = 0;
+      }
+
+      // Left wall — always solid
+      if (f.x - r < wallL) {
+        f.x = wallL + r;
+        f.vx *= -WALL_DAMPING;
+      }
+
+      // Right wall — always solid
+      if (f.x + r > wallR) {
+        f.x = wallR - r;
+        f.vx *= -WALL_DAMPING;
+      }
+    }
+
+    // Fruit-fruit collisions
+    for (let i = 0; i < fruits.length; i++) {
+      for (let j = i + 1; j < fruits.length; j++) {
+        const a = fruits[i];
+        const b = fruits[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const minDist = a.radius + b.radius;
+
+        if (dist < minDist && dist > 0.01) {
+          const key = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
+          contactPairs.add(key);
+
+          const overlap = minDist - dist;
+          const nx = dx / dist;
+          const ny = dy / dist;
+
+          const totalMass = a.radius + b.radius;
+          const ratioA = b.radius / totalMass;
+          const ratioB = a.radius / totalMass;
+
+          a.x -= nx * overlap * ratioA;
+          a.y -= ny * overlap * ratioA;
+          b.x += nx * overlap * ratioB;
+          b.y += ny * overlap * ratioB;
+
+          const dvx = a.vx - b.vx;
+          const dvy = a.vy - b.vy;
+          const dvDotN = dvx * nx + dvy * ny;
+
+          if (dvDotN > 0) {
+            const restitution = 0.3;
+            const impulse = dvDotN * (1 + restitution) / 2;
+            a.vx -= impulse * nx * ratioA;
+            a.vy -= impulse * ny * ratioA;
+            b.vx += impulse * nx * ratioB;
+            b.vy += impulse * ny * ratioB;
+          }
+        }
+      }
+    }
+  }
+
+}
+
+// ============================================================
+// MERGING
+// ============================================================
+function checkMerges() {
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < fruits.length; i++) {
+      for (let j = i + 1; j < fruits.length; j++) {
+        const a = fruits[i];
+        const b = fruits[j];
+        if (a.type !== b.type) continue;
+        if (a.type >= FRUITS.length - 1) continue;
+
+        const key = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id;
+        if (!contactPairs.has(key)) continue;
+
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const newType = a.type + 1;
+
+        score += FRUITS[newType].points;
+        document.getElementById('score-display').textContent = score;
+
+        spawnMergeParticles(mx, my, FRUITS[a.type].color, a.radius);
+        mergeFlashes.push({ x: mx, y: my, radius: a.radius * 2, alpha: 1, color: FRUITS[newType].color });
+
+        fruits.splice(j, 1);
+        fruits.splice(i, 1);
+        fruits.push(createMergedFruit(mx, my, newType));
+
+        // Check milestone for newly created flower
+        checkMilestone(newType);
+
+        merged = true;
+        break;
+      }
+      if (merged) break;
+    }
+  }
+}
+
+// ============================================================
+// ZOMBIES
+// ============================================================
+function spawnZombie(baseHp, type) {
+  const x = wallL + Math.random() * (wallR - wallL);
+  const y = H + ZOMBIE_SIZE;
+
+  let hp = baseHp || ZOMBIE_HP_BASE;
+  let speed = ZOMBIE_SPEED;
+  let size = ZOMBIE_SIZE;
+  let emoji = '🧟';
+  let zombieType = type || 'normal';
+
+  if (zombieType === 'fast') {
+    hp *= 0.6;
+    speed = ZOMBIE_SPEED * 1.6;
+    emoji = '💀';
+  } else if (zombieType === 'tank') {
+    hp *= 2.5;
+    speed = ZOMBIE_SPEED * 0.55;
+    size = ZOMBIE_SIZE * 1.3;
+    emoji = '🛡️';
+  } else if (zombieType === 'boss') {
+    hp *= 8;
+    speed = ZOMBIE_SPEED * 0.35;
+    size = ZOMBIE_SIZE * 1.8;
+    emoji = '👹';
+  } else if (zombieType === 'freezer') {
+    hp *= 1.2;
+    speed = ZOMBIE_SPEED * 0.5;
+    emoji = '🧊';
+  } else if (zombieType === 'bomber') {
+    hp *= 0.5;
+    speed = ZOMBIE_SPEED * 2.2;
+    emoji = '💣';
+  }
+
+  zombies.push({
+    x, y,
+    targetSide: 'bottom',
+    state: 'walking',
+    eatTarget: null,
+    id: Math.random(),
+    frame: Math.floor(Math.random() * 100),
+    hp: hp,
+    maxHp: hp,
+    speed: speed,
+    size: size,
+    emoji: emoji,
+    zombieType: zombieType,
+    shootCooldown: zombieType === 'freezer' ? ZOMBIE_SHOOT_INTERVAL : 0,
+  });
+}
+
+function startLevel(levelNum) {
+  currentLevel = levelNum;
+  currentWaveIndex = 0;
+  levelConfig = getLevelConfig(levelNum);
+  startNextWave();
+}
+
+function startNextWave() {
+  if (currentWaveIndex >= levelConfig.waves.length) {
+    // Level complete!
+    waveState = 'level_complete';
+    showBanner(`Level ${currentLevel} Complete!`);
+    waveDelay = 180; // 3 sec pause before next level
+    // Free minor repair
+    fenceHP.bottom = Math.min(100, fenceHP.bottom + 10);
+    updateLevelDisplay();
+    // Show repair popup if fence is damaged
+    if (fenceHP.bottom < 80) {
+      setTimeout(() => showRepairPopup(), 500);
+    }
+    return;
+  }
+
+  const wave = levelConfig.waves[currentWaveIndex];
+  waveState = 'waiting';
+  waveDelay = wave.delay || 180;
+  waveZombiesSpawned = 0;
+  waveSpawnTimer = 0;
+  showBanner(`Level ${currentLevel} — Wave ${currentWaveIndex + 1}`);
+  updateLevelDisplay();
+}
+
+function updateWaveSystem() {
+  if (waveState === 'waiting') {
+    waveDelay--;
+    if (waveDelay <= 0) {
+      waveState = 'spawning';
+    }
+    return;
+  }
+
+  if (waveState === 'spawning') {
+    const wave = levelConfig.waves[currentWaveIndex];
+    waveSpawnTimer++;
+    if (waveSpawnTimer >= wave.interval && waveZombiesSpawned < wave.count) {
+      waveSpawnTimer = 0;
+      // Determine zombie type for this spawn
+      let type = 'normal';
+      if (wave.boss && waveZombiesSpawned === wave.count - 1) {
+        type = 'boss';
+      } else if (wave.bomber && Math.random() < 0.35) {
+        type = 'bomber';
+      } else if (wave.freezer && Math.random() < 0.3) {
+        type = 'freezer';
+      } else if (wave.tank && Math.random() < 0.4) {
+        type = 'tank';
+      } else if (wave.fast && Math.random() < 0.5) {
+        type = 'fast';
+      }
+      spawnZombie(wave.hp, type);
+      waveZombiesSpawned++;
+    }
+    if (waveZombiesSpawned >= wave.count) {
+      waveState = 'clearing';
+    }
+    return;
+  }
+
+  if (waveState === 'clearing') {
+    // Wait until all zombies from this wave are dead
+    if (zombies.length === 0) {
+      currentWaveIndex++;
+      startNextWave();
+    }
+    return;
+  }
+
+  if (waveState === 'level_complete') {
+    if (repairPending) return; // wait for repair popup
+    waveDelay--;
+    if (waveDelay <= 0) {
+      startLevel(currentLevel + 1);
+    }
+    return;
+  }
+}
+
+function showBanner(text) {
+  bannerText = text;
+  bannerAlpha = 1;
+  bannerTimer = 120; // 2 seconds
+}
+
+function updateLevelDisplay() {
+  const el = document.getElementById('level-display');
+  if (el) {
+    if (waveState === 'level_complete') {
+      el.textContent = `Level ${currentLevel} Complete!`;
+    } else {
+      el.textContent = `Level ${currentLevel} — Wave ${currentWaveIndex + 1}`;
+    }
+  }
+}
+
+function updateZombies() {
+  const fenceBottomY = H - ZOMBIE_SPAWN_ZONE - FENCE_W - 2;
+  const grandpaX = dropX;
+  const grandpaY = DANGER_LINE_Y - 38;
+
+  for (let i = zombies.length - 1; i >= 0; i--) {
+    const z = zombies[i];
+    const spd = z.speed || ZOMBIE_SPEED;
+    const sz = z.size || ZOMBIE_SIZE;
+    z.frame++;
+
+    // Check if zombie is dead
+    if (z.hp <= 0) {
+      graves.push({ x: z.x, y: z.y, age: 0 });
+      spawnMergeParticles(z.x, z.y, '#556b2f', 8);
+      // Score for killing zombies
+      if (z.zombieType === 'boss') { score += 50; addCoins(5); }
+      else if (z.zombieType === 'tank') { score += 15; addCoins(2); }
+      else if (z.zombieType === 'freezer') { score += 20; addCoins(2); }
+      else if (z.zombieType === 'bomber') { score += 10; addCoins(1); }
+      else { score += 5; addCoins(1); }
+      document.getElementById('score-display').textContent = score;
+      zombies.splice(i, 1);
+      continue;
+    }
+
+    if (z.state === 'walking') {
+      z.y -= spd;
+      if (z.y <= fenceBottomY + FENCE_W + sz) {
+        z.y = fenceBottomY + FENCE_W + sz;
+        if (fenceHP.bottom <= 0) {
+          z.state = 'inside';
+        } else if (z.zombieType === 'bomber') {
+          // Bomber explodes at fence, dealing heavy fence damage
+          fenceHP.bottom = Math.max(0, fenceHP.bottom - 15);
+          spawnMergeParticles(z.x, fenceBottomY + FENCE_W, '#ff4500', 18);
+          spawnMergeParticles(z.x, fenceBottomY + FENCE_W, '#C49A3C', 12);
+          if (fenceHP.bottom <= 0) {
+            spawnMergeParticles(z.x, fenceBottomY + FENCE_W, '#C49A3C', 20);
+          }
+          z.hp = 0;
+          continue;
+        } else {
+          z.state = 'attacking_fence';
+        }
+      }
+    }
+
+    else if (z.state === 'attacking_fence') {
+      if (fenceHP.bottom <= 0) {
+        z.state = 'inside';
+        continue;
+      }
+
+      const atkDmg = z.zombieType === 'boss' ? ZOMBIE_ATTACK_DMG * 3 :
+                      z.zombieType === 'tank' ? ZOMBIE_ATTACK_DMG * 1.5 : ZOMBIE_ATTACK_DMG;
+      fenceHP.bottom = Math.max(0, fenceHP.bottom - atkDmg);
+
+      if (fenceHP.bottom <= 0) {
+        z.state = 'inside';
+        spawnMergeParticles(z.x, fenceBottomY + FENCE_W, '#C49A3C', 20);
+      }
+    }
+
+    else if (z.state === 'inside') {
+      if (fruits.length === 0) {
+        const dx = grandpaX - z.x;
+        const dy = grandpaY - z.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d > 20) {
+          z.x += (dx / d) * spd * 1.2;
+          z.y += (dy / d) * spd * 1.2;
+        } else {
+          triggerGameOver();
+        }
+        continue;
+      }
+
+      // Freezer zombie — stays back and shoots ice
+      if (z.zombieType === 'freezer') {
+        // Move to a comfortable distance then stop
+        const targetY = floorY - 60;
+        if (z.y > targetY) {
+          z.y -= spd * 0.6;
+        }
+        // Shoot ice at nearest flower
+        z.shootCooldown--;
+        if (z.shootCooldown <= 0) {
+          let nearest = null;
+          let nearDist = Infinity;
+          for (const f of fruits) {
+            const dx = f.x - z.x;
+            const dy = f.y - z.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < nearDist) { nearDist = d; nearest = f; }
+          }
+          if (nearest) {
+            const dx = nearest.x - z.x;
+            const dy = nearest.y - z.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            zombieProjectiles.push({
+              x: z.x, y: z.y,
+              vx: (dx / d) * ZOMBIE_PROJ_SPEED,
+              vy: (dy / d) * ZOMBIE_PROJ_SPEED,
+              radius: 5,
+              life: 150,
+            });
+          }
+          z.shootCooldown = ZOMBIE_SHOOT_INTERVAL;
+        }
+        continue;
+      }
+
+      // Bomber zombie — rush to nearest flower and explode
+      if (z.zombieType === 'bomber') {
+        let nearest = null;
+        let nearDist = Infinity;
+        for (const f of fruits) {
+          const dx = f.x - z.x;
+          const dy = f.y - z.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < nearDist) { nearDist = d; nearest = f; }
+        }
+        if (nearest) {
+          const dx = nearest.x - z.x;
+          const dy = nearest.y - z.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          z.x += (dx / d) * spd;
+          z.y += (dy / d) * spd;
+          // Explode when close enough
+          if (d < nearest.radius + sz * 0.6) {
+            // Damage all flowers in blast radius
+            const blastRadius = 80 * scaleFactor;
+            for (const f of fruits) {
+              const bdx = f.x - z.x;
+              const bdy = f.y - z.y;
+              const bd = Math.sqrt(bdx * bdx + bdy * bdy);
+              if (bd < blastRadius) {
+                const dmgRatio = 1 - (bd / blastRadius);
+                f.hp -= f.maxHp * 0.4 * dmgRatio;
+              }
+            }
+            spawnMergeParticles(z.x, z.y, '#ff4500', 20);
+            spawnMergeParticles(z.x, z.y, '#ffa500', 15);
+            z.hp = 0; // bomber dies on explosion
+            continue;
+          }
+        }
+        continue;
+      }
+
+      z.y -= spd * 0.8;
+
+      let nearest = null;
+      let nearDist = Infinity;
+      for (const f of fruits) {
+        const dx = f.x - z.x;
+        const dy = f.y - z.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < nearDist) {
+          nearDist = d;
+          nearest = f;
+        }
+      }
+
+      if (nearest) {
+        const dx = nearest.x - z.x;
+        const dy = nearest.y - z.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d > nearest.radius + sz * 0.5) {
+          z.x += (dx / d) * spd * 0.8;
+          z.y += (dy / d) * spd * 0.8;
+        } else {
+          z.state = 'eating';
+          z.eatTarget = nearest.id;
+        }
+      }
+    }
+
+    else if (z.state === 'eating') {
+      if (fruits.length === 0) {
+        z.state = 'inside';
+        z.eatTarget = null;
+        continue;
+      }
+
+      const target = fruits.find(f => f.id === z.eatTarget);
+      if (!target) {
+        z.state = 'inside';
+        z.eatTarget = null;
+        continue;
+      }
+
+      const dx = target.x - z.x;
+      const dy = target.y - z.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d > target.radius + sz) {
+        z.x += (dx / d) * spd * 0.5;
+        z.y += (dy / d) * spd * 0.5;
+      }
+
+      const eatDmg = z.zombieType === 'boss' ? ZOMBIE_EAT_DMG * 2.5 :
+                     z.zombieType === 'tank' ? ZOMBIE_EAT_DMG * 1.5 : ZOMBIE_EAT_DMG;
+      target.hp -= eatDmg;
+
+      if (target.hp <= 0) {
+        const idx = fruits.indexOf(target);
+        if (idx !== -1) {
+          if (target.type > 0) {
+            const newType = target.type - 1;
+            const r = FRUITS[newType].radius * scaleFactor;
+            const maxHp = FRUITS[newType].radius * 2;
+            fruits[idx] = {
+              x: target.x,
+              y: target.y,
+              vx: target.vx,
+              vy: target.vy,
+              type: newType,
+              radius: r,
+              justDropped: 0,
+              mergeScale: 1.3,
+              id: Math.random(),
+              hp: maxHp,
+              maxHp: maxHp,
+            };
+            spawnMergeParticles(target.x, target.y, '#ff4444', target.radius * 0.5);
+          } else {
+            spawnMergeParticles(target.x, target.y, '#ff4444', target.radius);
+            fruits.splice(idx, 1);
+          }
+        }
+        z.state = 'inside';
+        z.eatTarget = null;
+      }
+    }
+
+    if (z.x < -100 || z.x > W + 100 || z.y < -100 || z.y > H + 100) {
+      zombies.splice(i, 1);
+    }
+  }
+}
+
+// ============================================================
+// FLOWER SHOOTING SYSTEM
+// ============================================================
+function updateShooting() {
+  // Only inside zombies can be shot at
+  const targetZombies = zombies.filter(z => z.state === 'inside' || z.state === 'eating');
+  if (targetZombies.length === 0) return;
+
+  for (const f of fruits) {
+    if (f.justDropped > 0) continue;
+    if (f.freezeTimer && f.freezeTimer > 0) continue; // frozen flowers can't shoot
+
+    // Manage shoot cooldown per fruit
+    let cd = shootTimers.get(f.id) || 0;
+    cd--;
+    if (cd > 0) {
+      shootTimers.set(f.id, cd);
+      continue;
+    }
+
+    // Find nearest zombie
+    let nearest = null;
+    let nearDist = Infinity;
+    for (const z of targetZombies) {
+      const dx = z.x - f.x;
+      const dy = z.y - f.y;
+      const d = Math.sqrt(dx * dx + dy * dy);
+      if (d < nearDist) {
+        nearDist = d;
+        nearest = z;
+      }
+    }
+
+    if (!nearest) continue;
+
+    // Shoot!
+    const dx = nearest.x - f.x;
+    const dy = nearest.y - f.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    const dmg = PROJECTILE_BASE_DMG * (f.type + 1);
+
+    projectiles.push({
+      x: f.x,
+      y: f.y,
+      vx: (dx / d) * PROJECTILE_SPEED,
+      vy: (dy / d) * PROJECTILE_SPEED,
+      dmg: dmg,
+      radius: 3 + f.type * 0.5,
+      color: FRUITS[f.type].color,
+      life: 120,
+    });
+
+    // Bigger flowers shoot slightly faster
+    const interval = Math.max(45, SHOOT_INTERVAL - f.type * 4);
+    shootTimers.set(f.id, interval);
+  }
+}
+
+function updateProjectiles() {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+
+    if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
+      projectiles.splice(i, 1);
+      continue;
+    }
+
+    // Check hit against zombies
+    for (const z of zombies) {
+      const dx = z.x - p.x;
+      const dy = z.y - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < (z.size || ZOMBIE_SIZE) * 0.7 + p.radius) {
+        z.hp -= p.dmg;
+        spawnMergeParticles(p.x, p.y, p.color, 4);
+        projectiles.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
+// ============================================================
+// ZOMBIE PROJECTILES (ice shots)
+// ============================================================
+function updateZombieProjectiles() {
+  for (let i = zombieProjectiles.length - 1; i >= 0; i--) {
+    const p = zombieProjectiles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+
+    if (p.life <= 0 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
+      zombieProjectiles.splice(i, 1);
+      continue;
+    }
+
+    // Check hit against flowers
+    for (const f of fruits) {
+      const dx = f.x - p.x;
+      const dy = f.y - p.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < f.radius + p.radius) {
+        f.freezeTimer = FREEZE_DURATION;
+        spawnMergeParticles(p.x, p.y, '#88ddff', 6);
+        zombieProjectiles.splice(i, 1);
+        break;
+      }
+    }
+  }
+}
+
+// ============================================================
+// GAME OVER CHECK
+// ============================================================
+function checkGameOver() {
+  let anyAboveLine = false;
+  for (const f of fruits) {
+    if (f.justDropped > 0) continue;
+    if (f.y - f.radius < DANGER_LINE_Y) {
+      anyAboveLine = true;
+      break;
+    }
+  }
+
+  if (anyAboveLine) {
+    dangerTimer++;
+    if (dangerTimer > DANGER_GRACE_FRAMES) {
+      triggerGameOver();
+    }
+  } else {
+    dangerTimer = Math.max(0, dangerTimer - 2);
+  }
+}
+
+function triggerGameOver() {
+  gameOver = true;
+  if (score > bestScore) {
+    bestScore = score;
+    localStorage.setItem('flowerMergeBest', String(bestScore));
+  }
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('final-level').textContent = `Level ${currentLevel}`;
+  document.getElementById('game-over-overlay').classList.add('visible');
+}
+
+// ============================================================
+// PARTICLES
+// ============================================================
+function spawnMergeParticles(x, y, color, size) {
+  const count = 12;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+    const speed = 2 + Math.random() * 4;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 2,
+      life: 1,
+      decay: 0.02 + Math.random() * 0.02,
+      size: 3 + Math.random() * 4,
+      color,
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.life -= p.decay;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  for (let i = mergeFlashes.length - 1; i >= 0; i--) {
+    const f = mergeFlashes[i];
+    f.alpha -= 0.05;
+    f.radius += 2;
+    if (f.alpha <= 0) mergeFlashes.splice(i, 1);
+  }
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function drawFruitShape(context, x, y, r, fruitDef, mergeScale) {
+  const scale = mergeScale || 1;
+  const dr = r * scale;
+
+  context.save();
+  context.globalAlpha = (context._fruitAlpha || 1) * 0.1;
+  context.beginPath();
+  context.arc(x + 2, y + 2, dr, 0, Math.PI * 2);
+  context.fillStyle = 'rgba(0,0,0,1)';
+  context.fill();
+  context.restore();
+
+  context.save();
+  context.globalAlpha = (context._fruitAlpha || 1) * 0.45;
+  const grad = context.createRadialGradient(x - dr * 0.3, y - dr * 0.3, dr * 0.1, x, y, dr);
+  grad.addColorStop(0, lightenColor(fruitDef.color, 60));
+  grad.addColorStop(0.7, fruitDef.color);
+  grad.addColorStop(1, fruitDef.stroke);
+  context.beginPath();
+  context.arc(x, y, dr, 0, Math.PI * 2);
+  context.fillStyle = grad;
+  context.fill();
+  context.strokeStyle = fruitDef.stroke;
+  context.lineWidth = 1.5;
+  context.stroke();
+  context.restore();
+
+  context.save();
+  context.globalAlpha = (context._fruitAlpha || 1) * 0.25;
+  context.beginPath();
+  context.arc(x - dr * 0.25, y - dr * 0.25, dr * 0.3, 0, Math.PI * 2);
+  context.fillStyle = 'rgba(255,255,255,1)';
+  context.fill();
+  context.restore();
+
+  context.save();
+  context.globalAlpha = (context._fruitAlpha || 1);
+  const fontSize = Math.max(10, dr * 0.9);
+  context.font = `${fontSize}px serif`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(fruitDef.emoji, x, y + 1);
+  context.restore();
+}
+
+function drawHPBar(x, y, radius, hp, maxHp) {
+  if (hp >= maxHp) return;
+  const barW = radius * 1.4;
+  const barH = 4;
+  const bx = x - barW / 2;
+  const by = y - radius - 8;
+  const ratio = Math.max(0, hp / maxHp);
+
+  // Background
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.beginPath();
+  ctx.roundRect(bx - 1, by - 1, barW + 2, barH + 2, 2);
+  ctx.fill();
+
+  // HP fill — green to red
+  const r = Math.floor(255 * (1 - ratio));
+  const g = Math.floor(255 * ratio);
+  ctx.fillStyle = `rgb(${r},${g},50)`;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, barW * ratio, barH, 1);
+  ctx.fill();
+}
+
+function lightenColor(hex, amount) {
+  const num = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, (num >> 16) + amount);
+  const g = Math.min(255, ((num >> 8) & 0x00FF) + amount);
+  const b = Math.min(255, (num & 0x0000FF) + amount);
+  return `rgb(${r},${g},${b})`;
+}
+
+// ============================================================
+// FENCE DRAWING
+// ============================================================
+function drawFencePlank(x, y, w, h, hp) {
+  if (hp <= 0) return; // Don't draw destroyed fence
+
+  ctx.save();
+
+  // Damage shake
+  if (hp < 50 && hp > 0) {
+    const shake = (50 - hp) / 50 * 2;
+    ctx.translate(
+      (Math.random() - 0.5) * shake,
+      (Math.random() - 0.5) * shake * 0.5
+    );
+  }
+
+  const alpha = hp <= 0 ? 0 : hp < 25 ? 0.4 : hp < 50 ? 0.7 : 1;
+  ctx.globalAlpha = alpha;
+
+  const pg = ctx.createLinearGradient(x, y, x + w, y);
+  pg.addColorStop(0, '#8B6914');
+  pg.addColorStop(0.3, '#C49A3C');
+  pg.addColorStop(0.5, '#D4AA4F');
+  pg.addColorStop(0.7, '#C49A3C');
+  pg.addColorStop(1, '#8B6914');
+  ctx.fillStyle = pg;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 2);
+  ctx.fill();
+
+  // Wood grain
+  ctx.strokeStyle = 'rgba(90,55,10,0.25)';
+  ctx.lineWidth = 0.5;
+  for (let gy = y + 4; gy < y + h - 2; gy += 6 + Math.random() * 4) {
+    ctx.beginPath();
+    ctx.moveTo(x + 2, gy);
+    ctx.lineTo(x + w - 2, gy + (Math.random() - 0.5) * 2);
+    ctx.stroke();
+  }
+
+  // Cracks when damaged
+  if (hp < 60) {
+    ctx.strokeStyle = 'rgba(40,20,0,0.6)';
+    ctx.lineWidth = 1.5;
+    const crackCount = Math.floor((100 - hp) / 15);
+    for (let c = 0; c < crackCount; c++) {
+      const cx = x + Math.random() * w;
+      const cy = y + Math.random() * h;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + (Math.random() - 0.5) * 12, cy + (Math.random() - 0.5) * 12);
+      ctx.stroke();
+    }
+  }
+
+  ctx.strokeStyle = 'rgba(60,35,5,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(x, y, w, h, 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawFence() {
+  const fenceTop = DANGER_LINE_Y;
+  const fenceBottom = H - ZOMBIE_SPAWN_ZONE;
+  const plankH = fenceBottom - fenceTop - 3;
+
+  // Left fence — always full HP
+  drawFencePlank(2, fenceTop, FENCE_W, plankH, 100);
+
+  // Right fence — always full HP
+  drawFencePlank(W - FENCE_W - 2, fenceTop, FENCE_W, plankH, 100);
+
+  // Bottom fence — destructible
+  const bottomY = fenceBottom - FENCE_W - 2;
+  drawFencePlank(2, bottomY, W - 4, FENCE_W, fenceHP.bottom);
+
+  // Rails
+  const railY1 = fenceTop + plankH * 0.3;
+  const railY2 = fenceTop + plankH * 0.7;
+
+  ctx.fillStyle = '#A07828';
+  ctx.fillRect(0, railY1, FENCE_W + 4, 5);
+  ctx.fillRect(0, railY2, FENCE_W + 4, 5);
+  ctx.fillRect(W - FENCE_W - 4, railY1, FENCE_W + 4, 5);
+  ctx.fillRect(W - FENCE_W - 4, railY2, FENCE_W + 4, 5);
+
+  // Post caps
+  ctx.fillStyle = '#A07828';
+  ctx.beginPath();
+  ctx.moveTo(0, fenceTop);
+  ctx.lineTo(FENCE_W + 6, fenceTop);
+  ctx.lineTo(FENCE_W / 2 + 3, fenceTop - 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(W, fenceTop);
+  ctx.lineTo(W - FENCE_W - 6, fenceTop);
+  ctx.lineTo(W - FENCE_W / 2 - 3, fenceTop - 8);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ============================================================
+// GRANDPA DRAWING
+// ============================================================
+function drawGrandpa(x, y) {
+  const s = scaleFactor;
+
+  ctx.fillStyle = '#4a7c3f';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 18 * s, 14 * s, 12 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#3a6330';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#f5d0a9';
+  ctx.beginPath();
+  ctx.arc(x, y - 2 * s, 12 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#d4a574';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#dcc27a';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 10 * s, 18 * s, 5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#b89e55';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#e8cf82';
+  ctx.beginPath();
+  ctx.ellipse(x, y - 16 * s, 10 * s, 8 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#b89e55';
+  ctx.stroke();
+  ctx.fillStyle = '#8B4513';
+  ctx.fillRect(x - 10 * s, y - 13 * s, 20 * s, 2.5 * s);
+
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(x - 4 * s, y - 2 * s, 1.5 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + 4 * s, y - 2 * s, 1.5 * s, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = '#a0724a';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.arc(x, y + 1 * s, 4 * s, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#bbb';
+  ctx.lineWidth = 2 * s;
+  ctx.beginPath();
+  ctx.moveTo(x - 6 * s, y + 1 * s);
+  ctx.quadraticCurveTo(x - 3 * s, y + 4 * s, x, y + 2 * s);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 6 * s, y + 1 * s);
+  ctx.quadraticCurveTo(x + 3 * s, y + 4 * s, x, y + 2 * s);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#f5d0a9';
+  ctx.lineWidth = 4 * s;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x - 12 * s, y + 14 * s);
+  ctx.quadraticCurveTo(x - 22 * s, y + 8 * s, x - 18 * s, y + 2 * s);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x + 12 * s, y + 14 * s);
+  ctx.quadraticCurveTo(x + 22 * s, y + 8 * s, x + 18 * s, y + 2 * s);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+// ============================================================
+// ZOMBIE DRAWING
+// ============================================================
+function drawZombie(z) {
+  const s = scaleFactor;
+  const sz = (z.size || ZOMBIE_SIZE) * s;
+  const bob = Math.sin(z.frame * 0.1) * 3;
+  const x = z.x;
+  const y = z.y + bob;
+
+  // Main emoji
+  const fontSize = Math.max(22, sz * 1.5);
+  ctx.font = `${fontSize}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  ctx.fillText(z.emoji || '🧟', x, y);
+
+  // Zombie HP bar
+  if (z.hp < z.maxHp) {
+    const barW = sz * 1.2;
+    const barH = z.zombieType === 'boss' ? 5 : 3;
+    const bx = x - barW / 2;
+    const by = y - sz * 0.8 - 6;
+    const ratio = Math.max(0, z.hp / z.maxHp);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+
+    const barColor = z.zombieType === 'boss' ? `rgb(${Math.floor(200 * (1 - ratio))},50,${Math.floor(200 * ratio)})` :
+                     `rgb(${Math.floor(255 * (1 - ratio))},${Math.floor(180 * ratio)},50)`;
+    ctx.fillStyle = barColor;
+    ctx.fillRect(bx, by, barW * ratio, barH);
+  }
+
+  // Eating indicator
+  if (z.state === 'eating' && z.frame % 20 < 10) {
+    ctx.font = `${12 * s}px serif`;
+    ctx.fillText('😋', x, y - sz - 8);
+  }
+  // Attacking fence indicator
+  if (z.state === 'attacking_fence' && z.frame % 16 < 8) {
+    ctx.font = `${12 * s}px serif`;
+    ctx.fillText('💥', x + 12, y - 10);
+  }
+  // Freezer shooting indicator
+  if (z.zombieType === 'freezer' && z.state === 'inside' && z.shootCooldown < 20) {
+    ctx.font = `${10 * s}px serif`;
+    ctx.fillText('❄️', x + 14, y - 8);
+  }
+  // Bomber flashing when inside
+  if (z.zombieType === 'bomber' && z.state === 'inside') {
+    if (z.frame % 10 < 5) {
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.arc(x, y, sz * 1.2, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff4500';
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// ============================================================
+// ZOMBIE SPAWN ZONE
+// ============================================================
+function drawZombieSpawnZone() {
+  const zoneTop = H - ZOMBIE_SPAWN_ZONE;
+
+  // Dirt ground
+  const dirtGrad = ctx.createLinearGradient(0, zoneTop, 0, H);
+  dirtGrad.addColorStop(0, '#3d2b1f');
+  dirtGrad.addColorStop(0.3, '#4a3528');
+  dirtGrad.addColorStop(1, '#2a1a10');
+  ctx.fillStyle = dirtGrad;
+  ctx.beginPath();
+  ctx.moveTo(0, zoneTop);
+  ctx.lineTo(W, zoneTop);
+  ctx.lineTo(W, H);
+  ctx.quadraticCurveTo(W * 0.75, H - 2, W * 0.5, H);
+  ctx.quadraticCurveTo(W * 0.25, H - 2, 0, H);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dirt texture
+  ctx.fillStyle = 'rgba(80,50,30,0.3)';
+  for (let dx = 10; dx < W - 10; dx += 15 + Math.random() * 10) {
+    const dy = zoneTop + 5 + Math.random() * (ZOMBIE_SPAWN_ZONE - 10);
+    ctx.beginPath();
+    ctx.ellipse(dx, dy, 3 + Math.random() * 4, 2 + Math.random() * 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Small graves / dirt mounds
+  const moundPositions = [W * 0.15, W * 0.4, W * 0.65, W * 0.85];
+  for (const mx of moundPositions) {
+    const my = zoneTop + ZOMBIE_SPAWN_ZONE * 0.5;
+
+    // Mound
+    ctx.fillStyle = '#4a3528';
+    ctx.beginPath();
+    ctx.ellipse(mx, my + 6, 10, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tiny cross
+    ctx.strokeStyle = '#6a5548';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(mx, my - 4);
+    ctx.lineTo(mx, my + 6);
+    ctx.moveTo(mx - 4, my);
+    ctx.lineTo(mx + 4, my);
+    ctx.stroke();
+  }
+}
+
+// ============================================================
+// MAIN RENDER
+// ============================================================
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#87CEEB');
+  bgGrad.addColorStop(0.15, '#5cb3d4');
+  bgGrad.addColorStop(0.25, '#4a8c5e');
+  bgGrad.addColorStop(0.5, '#2d6b3f');
+  bgGrad.addColorStop(1, '#1a4a28');
+  ctx.fillStyle = bgGrad;
+  ctx.beginPath();
+  ctx.roundRect(0, 0, W, H, 16);
+  ctx.fill();
+
+  // Grass texture
+  ctx.fillStyle = 'rgba(30,80,30,0.3)';
+  for (let gx = 5; gx < W - 5; gx += 8) {
+    const gh = 6 + Math.sin(gx * 0.7 + frameCount * 0.02) * 3;
+    ctx.fillRect(gx, H - ZOMBIE_SPAWN_ZONE - FENCE_W - 2 - gh, 3, gh);
+  }
+
+  // Zombie spawn zone (below fence)
+  drawZombieSpawnZone();
+
+  // Zombies OUTSIDE the fence (walking + attacking)
+  for (const z of zombies) {
+    if (z.state === 'walking' || z.state === 'attacking_fence') {
+      drawZombie(z);
+    }
+  }
+
+  // Danger line
+  const dangerAlpha = dangerTimer > 0 ? 0.3 + 0.4 * Math.sin(frameCount * 0.15) : 0.15;
+  ctx.strokeStyle = `rgba(255, 80, 80, ${dangerAlpha})`;
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([8, 8]);
+  ctx.beginPath();
+  ctx.moveTo(FENCE_W + 6, DANGER_LINE_Y);
+  ctx.lineTo(W - FENCE_W - 6, DANGER_LINE_Y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Grandpa
+  drawGrandpa(dropX, DANGER_LINE_Y - 38);
+
+  // Drop guide
+  if (!gameOver && canDrop) {
+    const r = FRUITS[currentFruitType].radius * scaleFactor;
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 6]);
+    ctx.beginPath();
+    ctx.moveTo(dropX, DANGER_LINE_Y);
+    ctx.lineTo(dropX, floorY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const previewFruit = FRUITS[currentFruitType];
+    ctx._fruitAlpha = 0.5;
+    drawFruitShape(ctx, dropX, DANGER_LINE_Y - 10, r, previewFruit);
+    ctx._fruitAlpha = 1;
+  }
+
+  // Merge flashes
+  for (const f of mergeFlashes) {
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2);
+    ctx.fillStyle = f.color + Math.floor(f.alpha * 40).toString(16).padStart(2, '0');
+    ctx.fill();
+  }
+
+  // Fruits with HP bars + freeze overlay
+  ctx._fruitAlpha = 1;
+  for (const f of fruits) {
+    const def = FRUITS[f.type];
+    drawFruitShape(ctx, f.x, f.y, f.radius, def, f.mergeScale);
+    drawHPBar(f.x, f.y, f.radius, f.hp, f.maxHp);
+    // Frozen overlay
+    if (f.freezeTimer && f.freezeTimer > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.35 + 0.15 * Math.sin(frameCount * 0.1);
+      ctx.beginPath();
+      ctx.arc(f.x, f.y, f.radius * 1.15, 0, Math.PI * 2);
+      ctx.fillStyle = '#88ddff';
+      ctx.fill();
+      ctx.strokeStyle = '#44aadd';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+      // Snowflake icon
+      ctx.save();
+      ctx.globalAlpha = 0.8;
+      ctx.font = `${Math.max(10, f.radius * 0.5)}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('❄️', f.x, f.y - f.radius - 4);
+      ctx.restore();
+    }
+  }
+
+  // Projectiles
+  for (const p of projectiles) {
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    const pg = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
+    pg.addColorStop(0, '#fff');
+    pg.addColorStop(0.4, p.color);
+    pg.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = pg;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Zombie ice projectiles
+  for (const p of zombieProjectiles) {
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+    const ig = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.radius);
+    ig.addColorStop(0, '#ffffff');
+    ig.addColorStop(0.4, '#88ddff');
+    ig.addColorStop(1, '#4488cc');
+    ctx.fillStyle = ig;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Zombies INSIDE the fence
+  for (const z of zombies) {
+    if (z.state === 'inside' || z.state === 'eating') {
+      drawZombie(z);
+    }
+  }
+
+  // Graves
+  for (const g of graves) {
+    const alpha = Math.max(0.3, 1 - g.age / 1800);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    const gSize = 18 * scaleFactor;
+    ctx.font = `${gSize}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🪦', g.x, g.y);
+    ctx.restore();
+  }
+
+  // Particles
+  for (const p of particles) {
+    ctx.globalAlpha = p.life;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fillStyle = p.color;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Fence on top
+  drawFence();
+
+  // Best score
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'right';
+  ctx.fillText(`Best: ${bestScore}`, W - 12, 20);
+
+  // Fence HP indicators
+  drawFenceHPIndicators();
+
+  // Wave/Level banner
+  if (bannerTimer > 0) {
+    bannerTimer--;
+    bannerAlpha = bannerTimer > 100 ? 1 : bannerTimer / 100;
+    ctx.save();
+    ctx.globalAlpha = bannerAlpha;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 130, 40, 260, 44, 12);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(bannerText, W / 2, 62);
+    ctx.restore();
+  }
+
+  // Wave progress pips
+  if (levelConfig) {
+    const totalWaves = levelConfig.waves.length;
+    const pipSize = 6;
+    const pipGap = 4;
+    const totalW = totalWaves * pipSize + (totalWaves - 1) * pipGap;
+    const startX = W / 2 - totalW / 2;
+    const pipY = 32;
+
+    for (let i = 0; i < totalWaves; i++) {
+      const px = startX + i * (pipSize + pipGap);
+      ctx.beginPath();
+      ctx.arc(px + pipSize / 2, pipY, pipSize / 2, 0, Math.PI * 2);
+      if (i < currentWaveIndex) {
+        ctx.fillStyle = '#4caf50'; // completed
+      } else if (i === currentWaveIndex && (waveState === 'spawning' || waveState === 'clearing')) {
+        ctx.fillStyle = '#ff9800'; // active
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.25)'; // pending
+      }
+      ctx.fill();
+    }
+
+    // Level number
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '10px system-ui';
+    ctx.textAlign = 'left';
+    ctx.fillText(`Lv.${currentLevel}`, 12, 20);
+  }
+}
+
+function drawFenceHPIndicators() {
+  const sides = [
+    { key: 'bottom', x: W / 2, y: H - ZOMBIE_SPAWN_ZONE - 4 },
+  ];
+
+  for (const s of sides) {
+    const hp = fenceHP[s.key];
+    if (hp >= 100) continue;
+    if (hp <= 0) {
+      ctx.fillStyle = 'rgba(255,50,50,0.7)';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('BROKEN', s.x, s.y);
+      continue;
+    }
+
+    const barW = 30;
+    const barH = 4;
+    const bx = s.x - barW / 2;
+    const by = s.y;
+    const ratio = hp / 100;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+
+    const r = Math.floor(255 * (1 - ratio));
+    const g = Math.floor(200 * ratio);
+    ctx.fillStyle = `rgb(${r},${g},50)`;
+    ctx.fillRect(bx, by, barW * ratio, barH);
+  }
+}
+
+// ============================================================
+// EVOLUTION BAR
+// ============================================================
+function buildEvolutionBar() {
+  const el = document.getElementById('evolution-bar');
+  el.innerHTML = '';
+  FRUITS.forEach((f, i) => {
+    if (i > 0) {
+      const arrow = document.createElement('span');
+      arrow.className = 'evo-arrow';
+      arrow.textContent = '→';
+      el.appendChild(arrow);
+    }
+    const span = document.createElement('span');
+    span.className = 'evo-item' + (unlockedFlowers.has(i) ? ' unlocked' : '');
+    span.id = 'evo-' + i;
+    span.textContent = f.emoji;
+    span.title = f.name;
+    el.appendChild(span);
+  });
+}
+
+function updateEvolutionBar() {
+  FRUITS.forEach((f, i) => {
+    const el = document.getElementById('evo-' + i);
+    if (el && unlockedFlowers.has(i)) {
+      el.classList.add('unlocked');
+    }
+  });
+}
+
+// ============================================================
+// COINS
+// ============================================================
+function addCoins(amount) {
+  coins += amount;
+  document.getElementById('coins-display').textContent = coins;
+}
+
+// ============================================================
+// INFO PANEL
+// ============================================================
+function buildInfoPanel() {
+  // Flowers
+  const fg = document.getElementById('flower-info-grid');
+  fg.innerHTML = '';
+  // Header
+  fg.innerHTML += '<div class="info-grid-header"></div><div class="info-grid-header">Name</div><div class="info-grid-header">DMG</div><div class="info-grid-header">Interval</div>';
+  FRUITS.forEach((f, i) => {
+    const dmg = (PROJECTILE_BASE_DMG * (i + 1)).toFixed(1);
+    const interval = Math.max(45, SHOOT_INTERVAL - i * 4);
+    const intSec = (interval / 60).toFixed(1) + 's';
+    fg.innerHTML += `<div class="ig-emoji">${f.emoji}</div><div class="ig-name">${f.name}</div><div class="ig-stat">${dmg}</div><div class="ig-stat">${intSec}</div>`;
+  });
+
+  // Zombies
+  const zg = document.getElementById('zombie-info-grid');
+  zg.innerHTML = '';
+  zg.innerHTML += '<div class="info-grid-header"></div><div class="info-grid-header">Type</div><div class="info-grid-header">Trait</div>';
+  const zombieTypes = [
+    { emoji: '🧟', name: 'Normal', trait: 'Standard walker' },
+    { emoji: '💀', name: 'Fast', trait: 'Speed ×1.6, HP ×0.6' },
+    { emoji: '🛡️', name: 'Tank', trait: 'HP ×2.5, slow' },
+    { emoji: '🧊', name: 'Freezer', trait: 'Shoots ice, freezes flowers' },
+    { emoji: '💣', name: 'Bomber', trait: 'Speed ×2.2, explodes on contact' },
+    { emoji: '👹', name: 'Boss', trait: 'HP ×8, very slow, heavy attacks' },
+  ];
+  for (const z of zombieTypes) {
+    zg.innerHTML += `<div class="ig-emoji">${z.emoji}</div><div class="ig-name">${z.name}</div><div class="ig-stat" style="text-align:left">${z.trait}</div>`;
+  }
+}
+
+function toggleInfoPanel() {
+  const overlay = document.getElementById('info-overlay');
+  const isVisible = overlay.classList.contains('visible');
+  if (isVisible) {
+    overlay.classList.remove('visible');
+    gamePaused = false;
+  } else {
+    buildInfoPanel();
+    overlay.classList.add('visible');
+    gamePaused = true;
+  }
+}
+
+// ============================================================
+// REPAIR POPUP
+// ============================================================
+function showRepairPopup() {
+  repairPending = true;
+  gamePaused = true;
+  document.getElementById('repair-fence-hp').textContent = Math.round(fenceHP.bottom);
+  const repairBtn = document.getElementById('repair-yes-btn');
+  repairBtn.disabled = coins < 200;
+  document.getElementById('repair-overlay').classList.add('visible');
+}
+
+function doRepair() {
+  if (coins < 200) return;
+  addCoins(-200);
+  fenceHP.bottom = Math.min(100, fenceHP.bottom + 50);
+  closeRepairPopup();
+}
+
+function closeRepairPopup() {
+  document.getElementById('repair-overlay').classList.remove('visible');
+  repairPending = false;
+  gamePaused = false;
+}
+
+// ============================================================
+// MILESTONE POPUP (new flower unlocked)
+// ============================================================
+function checkMilestone(newType) {
+  if (newType >= 4 && !unlockedFlowers.has(newType)) {
+    unlockedFlowers.add(newType);
+    milestoneQueue.push(newType);
+    updateEvolutionBar();
+    // Animate the evo bar item
+    const el = document.getElementById('evo-' + newType);
+    if (el) {
+      el.classList.add('just-unlocked');
+      setTimeout(() => el.classList.remove('just-unlocked'), 600);
+    }
+  } else if (!unlockedFlowers.has(newType)) {
+    unlockedFlowers.add(newType);
+    updateEvolutionBar();
+  }
+}
+
+function showNextMilestone() {
+  if (milestoneQueue.length === 0 || gamePaused) return;
+  const type = milestoneQueue.shift();
+  const f = FRUITS[type];
+  gamePaused = true;
+
+  document.getElementById('milestone-emoji').textContent = f.emoji;
+  document.getElementById('milestone-name').textContent = f.name;
+  drawMilestoneScene(type);
+  document.getElementById('milestone-overlay').classList.add('visible');
+}
+
+function closeMilestone() {
+  document.getElementById('milestone-overlay').classList.remove('visible');
+  gamePaused = false;
+  // Check if more milestones queued
+  if (milestoneQueue.length > 0) {
+    setTimeout(showNextMilestone, 300);
+  }
+}
+
+function drawMilestoneScene(flowerType) {
+  const mc = document.getElementById('milestone-canvas');
+  const mctx = mc.getContext('2d');
+  const w = 280, h = 200;
+  mc.width = w * 2;
+  mc.height = h * 2;
+  mc.style.width = w + 'px';
+  mc.style.height = h + 'px';
+  mctx.setTransform(2, 0, 0, 2, 0, 0);
+
+  // Sky gradient
+  const sky = mctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#ff9966');
+  sky.addColorStop(0.4, '#ff5e62');
+  sky.addColorStop(0.7, '#4a8c5e');
+  sky.addColorStop(1, '#2d6b3f');
+  mctx.fillStyle = sky;
+  mctx.beginPath();
+  mctx.roundRect(0, 0, w, h, 10);
+  mctx.fill();
+
+  // Sun
+  mctx.fillStyle = '#ffdd57';
+  mctx.beginPath();
+  mctx.arc(w - 40, 35, 25, 0, Math.PI * 2);
+  mctx.fill();
+  mctx.fillStyle = 'rgba(255,220,80,0.2)';
+  mctx.beginPath();
+  mctx.arc(w - 40, 35, 40, 0, Math.PI * 2);
+  mctx.fill();
+
+  // Ground
+  mctx.fillStyle = '#3d7a3f';
+  mctx.fillRect(0, h * 0.65, w, h * 0.35);
+  mctx.fillStyle = '#2e5e30';
+  mctx.fillRect(0, h * 0.65, w, 4);
+
+  // Background zombies
+  const zombiePositions = [30, 80, 200, 245];
+  for (const zx of zombiePositions) {
+    const zy = h * 0.6 + Math.random() * 10;
+    mctx.font = '22px serif';
+    mctx.textAlign = 'center';
+    mctx.globalAlpha = 0.5;
+    mctx.fillText('🧟', zx, zy);
+  }
+  mctx.globalAlpha = 1;
+
+  // Grandpa in center
+  const gx = w / 2;
+  const gy = h * 0.55;
+  // Body
+  mctx.fillStyle = '#4a7c3f';
+  mctx.beginPath();
+  mctx.ellipse(gx, gy + 22, 18, 16, 0, 0, Math.PI * 2);
+  mctx.fill();
+  // Head
+  mctx.fillStyle = '#f5d0a9';
+  mctx.beginPath();
+  mctx.arc(gx, gy, 16, 0, Math.PI * 2);
+  mctx.fill();
+  // Hat
+  mctx.fillStyle = '#dcc27a';
+  mctx.beginPath();
+  mctx.ellipse(gx, gy - 10, 22, 6, 0, 0, Math.PI * 2);
+  mctx.fill();
+  mctx.fillStyle = '#e8cf82';
+  mctx.beginPath();
+  mctx.ellipse(gx, gy - 18, 12, 10, 0, 0, Math.PI * 2);
+  mctx.fill();
+  mctx.fillStyle = '#8B4513';
+  mctx.fillRect(gx - 12, gy - 14, 24, 3);
+  // Eyes
+  mctx.fillStyle = '#333';
+  mctx.beginPath();
+  mctx.arc(gx - 5, gy, 2, 0, Math.PI * 2);
+  mctx.fill();
+  mctx.beginPath();
+  mctx.arc(gx + 5, gy, 2, 0, Math.PI * 2);
+  mctx.fill();
+  // Smile
+  mctx.strokeStyle = '#a0724a';
+  mctx.lineWidth = 1.5;
+  mctx.beginPath();
+  mctx.arc(gx, gy + 3, 5, 0.1 * Math.PI, 0.9 * Math.PI);
+  mctx.stroke();
+
+  // Flower in grandpa's hand
+  const fDef = FRUITS[flowerType];
+  const fx = gx + 28;
+  const fy = gy - 5;
+  // Stem
+  mctx.strokeStyle = '#4a8c3f';
+  mctx.lineWidth = 2;
+  mctx.beginPath();
+  mctx.moveTo(gx + 16, gy + 10);
+  mctx.quadraticCurveTo(fx - 4, fy + 15, fx, fy);
+  mctx.stroke();
+  // Flower emoji
+  mctx.font = '28px serif';
+  mctx.textAlign = 'center';
+  mctx.textBaseline = 'middle';
+  mctx.fillText(fDef.emoji, fx, fy);
+
+  // Sparkles around flower
+  mctx.font = '10px serif';
+  const sparkles = ['✨', '⭐', '💫'];
+  for (let i = 0; i < 5; i++) {
+    const angle = (Math.PI * 2 / 5) * i;
+    const sr = 20 + Math.random() * 10;
+    const sx = fx + Math.cos(angle) * sr;
+    const sy = fy + Math.sin(angle) * sr;
+    mctx.globalAlpha = 0.6 + Math.random() * 0.4;
+    mctx.fillText(sparkles[i % 3], sx, sy);
+  }
+  mctx.globalAlpha = 1;
+
+  // Fence
+  mctx.fillStyle = '#C49A3C';
+  mctx.fillRect(0, h * 0.65 - 10, w, 10);
+  // Fence posts
+  for (let px = 15; px < w; px += 40) {
+    mctx.fillStyle = '#A07828';
+    mctx.fillRect(px - 4, h * 0.55, 8, h * 0.1 + 10);
+  }
+}
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+function gameLoop() {
+  frameCount++;
+
+  // Show queued milestones
+  if (milestoneQueue.length > 0 && !gamePaused) {
+    showNextMilestone();
+  }
+
+  if (!gameOver && !gamePaused) {
+    if (dropCooldown > 0) {
+      dropCooldown--;
+      if (dropCooldown <= 0) canDrop = true;
+    }
+
+    updatePhysics();
+    checkMerges();
+    updateWaveSystem();
+    updateZombies();
+    updateShooting();
+    updateProjectiles();
+    // Age graves
+    for (let i = graves.length - 1; i >= 0; i--) {
+      graves[i].age++;
+      if (graves[i].age > 1800) graves.splice(i, 1); // fade out after 30sec
+    }
+    // Update freeze timers on fruits
+    for (const f of fruits) {
+      if (f.freezeTimer && f.freezeTimer > 0) f.freezeTimer--;
+    }
+    // Update zombie projectiles
+    updateZombieProjectiles();
+    // Clean shoot timers for removed fruits
+    for (const [id] of shootTimers) {
+      if (!fruits.find(f => f.id === id)) shootTimers.delete(id);
+    }
+    checkGameOver();
+  }
+
+  updateParticles();
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// ============================================================
+// START
+// ============================================================
+init();
+</script>
+</body>
+</html>
